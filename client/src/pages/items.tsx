@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
-import { Plus, Pencil, Trash2, Search, Package, Car } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Car, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { Item, InsertItem } from "@shared/schema";
 
@@ -72,6 +72,7 @@ export default function ItemsPage() {
       name: formData.get("name") as string,
       description: formData.get("description") as string || null,
       category: formData.get("category") as string || null,
+      imageUrl: formData.get("imageUrl") as string || null,
     };
 
     if (editingItem) {
@@ -81,8 +82,21 @@ export default function ItemsPage() {
     }
   };
 
-  const getItemIcon = (name: string, category?: string | null) => {
-    const searchStr = (name + (category || "")).toLowerCase();
+  const getItemIcon = (item: Item) => {
+    if (item.imageUrl) {
+      return (
+        <img 
+          src={item.imageUrl} 
+          alt={item.name} 
+          className="h-full w-full object-cover rounded"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = ""; // Fallback to icon
+            (e.target as HTMLImageElement).className = "hidden";
+          }}
+        />
+      );
+    }
+    const searchStr = (item.name + (item.category || "")).toLowerCase();
     if (searchStr.includes("bil") || searchStr.includes("lastbil") || searchStr.includes("fordon")) {
       return <Car className="h-4 w-4" />;
     }
@@ -145,6 +159,24 @@ export default function ItemsPage() {
                   data-testid="input-item-category"
                 />
               </div>
+              <div>
+                <Label htmlFor="imageUrl">Bild-URL</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="imageUrl"
+                    name="imageUrl"
+                    placeholder="https://exempel.se/bild.jpg"
+                    defaultValue={editingItem?.imageUrl || ""}
+                    data-testid="input-item-image-url"
+                  />
+                  <div className="h-10 w-10 border rounded bg-muted flex items-center justify-center flex-shrink-0">
+                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Klistra in en länk till en bild på artikeln.
+                </p>
+              </div>
               <Button
                 type="submit"
                 className="w-full"
@@ -173,8 +205,8 @@ export default function ItemsPage() {
               <CardContent className="p-0">
                 <div className="flex items-center px-4 py-2 hover:bg-muted/50 transition-colors">
                   <div className="flex-shrink-0 mr-4">
-                    <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center text-primary">
-                      {getItemIcon(item.name, item.category)}
+                    <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center text-primary overflow-hidden">
+                      {getItemIcon(item)}
                     </div>
                   </div>
                   <div className="flex-grow min-w-0">

@@ -35,6 +35,7 @@ export const items = pgTable("items", {
   name: text("name").notNull(),
   description: text("description"),
   category: text("category"),
+  imageUrl: text("image_url"),
 });
 
 export const insertItemSchema = createInsertSchema(items).omit({ id: true });
