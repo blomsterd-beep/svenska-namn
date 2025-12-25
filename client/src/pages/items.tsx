@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
-import { Plus, Pencil, Trash2, Search, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, Car } from "lucide-react";
 import { toast } from "sonner";
 import type { Item, InsertItem } from "@shared/schema";
 
@@ -81,6 +81,14 @@ export default function ItemsPage() {
     }
   };
 
+  const getItemIcon = (name: string, category?: string | null) => {
+    const searchStr = (name + (category || "")).toLowerCase();
+    if (searchStr.includes("bil") || searchStr.includes("lastbil") || searchStr.includes("fordon")) {
+      return <Car className="h-4 w-4" />;
+    }
+    return <Package className="h-4 w-4" />;
+  };
+
   return (
     <Layout title="Artiklar">
       <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-between">
@@ -132,7 +140,7 @@ export default function ItemsPage() {
                 <Input
                   id="category"
                   name="category"
-                  placeholder="t.ex. Hinkar, Vagnar, Kärl"
+                  placeholder="t.ex. Hinkar, Vagnar, Kärl, Bilar"
                   defaultValue={editingItem?.category || ""}
                   data-testid="input-item-category"
                 />
@@ -151,59 +159,69 @@ export default function ItemsPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="pt-6 h-24" />
+              <CardContent className="py-3 h-12" />
             </Card>
           ))}
         </div>
       ) : filteredItems && filteredItems.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="space-y-2">
           {filteredItems.map((item) => (
-            <Card key={item.id} data-testid={`item-card-${item.id}`}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-primary" />
-                    <span>{item.name}</span>
+            <Card key={item.id} data-testid={`item-card-${item.id}`} className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-center px-4 py-2 hover:bg-muted/50 transition-colors">
+                  <div className="flex-shrink-0 mr-4">
+                    <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center text-primary">
+                      {getItemIcon(item.name, item.category)}
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => {
-                        setEditingItem(item);
-                        setDialogOpen(true);
-                      }}
-                      data-testid={`edit-item-${item.id}`}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => {
-                        if (confirm("Är du säker på att du vill ta bort denna artikel?")) {
-                          deleteMutation.mutate(item.id);
-                        }
-                      }}
-                      data-testid={`delete-item-${item.id}`}
-                    >
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
+                  <div className="flex-grow min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-grow min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate">{item.name}</p>
+                          {item.category && (
+                            <span className="inline-block px-1.5 py-0.5 bg-muted rounded text-[10px] uppercase font-bold text-muted-foreground whitespace-nowrap">
+                              {item.category}
+                            </span>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 ml-4">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            setEditingItem(item);
+                            setDialogOpen(true);
+                          }}
+                          data-testid={`edit-item-${item.id}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            if (confirm("Är du säker på att du vill ta bort denna artikel?")) {
+                              deleteMutation.mutate(item.id);
+                            }
+                          }}
+                          data-testid={`delete-item-${item.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                {item.category && (
-                  <span className="inline-block px-2 py-0.5 bg-muted rounded text-xs">
-                    {item.category}
-                  </span>
-                )}
-                {item.description && <p className="mt-2">{item.description}</p>}
+                </div>
               </CardContent>
             </Card>
           ))}

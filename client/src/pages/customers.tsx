@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, User } from "lucide-react";
 import { toast } from "sonner";
 import type { Customer, InsertCustomer } from "@shared/schema";
 
@@ -171,52 +171,67 @@ export default function CustomersPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="pt-6 h-32" />
+              <CardContent className="py-3 h-12" />
             </Card>
           ))}
         </div>
       ) : filteredCustomers && filteredCustomers.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {filteredCustomers.map((customer) => (
-            <Card key={customer.id} data-testid={`customer-card-${customer.id}`}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center justify-between">
-                  <span>{customer.name}</span>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setEditingCustomer(customer);
-                        setDialogOpen(true);
-                      }}
-                      data-testid={`edit-customer-${customer.id}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        if (confirm("Är du säker på att du vill ta bort denna kund?")) {
-                          deleteMutation.mutate(customer.id);
-                        }
-                      }}
-                      data-testid={`delete-customer-${customer.id}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+            <Card key={customer.id} data-testid={`customer-card-${customer.id}`} className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-center px-4 py-2 hover:bg-muted/50 transition-colors">
+                  <div className="flex-shrink-0 mr-4">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <User className="h-4 w-4" />
+                    </div>
                   </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground space-y-1">
-                {customer.company && <p>{customer.company}</p>}
-                {customer.phone && <p>{customer.phone}</p>}
-                {customer.email && <p>{customer.email}</p>}
-                {customer.address && <p>{customer.address}</p>}
+                  <div className="flex-grow min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm truncate">{customer.name}</p>
+                        {customer.company && (
+                          <p className="text-xs text-muted-foreground truncate">{customer.company}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="hidden sm:block text-right">
+                          {customer.phone && <p className="text-xs text-muted-foreground">{customer.phone}</p>}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              setEditingCustomer(customer);
+                              setDialogOpen(true);
+                            }}
+                            data-testid={`edit-customer-${customer.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              if (confirm("Är du säker på att du vill ta bort denna kund?")) {
+                                deleteMutation.mutate(customer.id);
+                              }
+                            }}
+                            data-testid={`delete-customer-${customer.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))}
