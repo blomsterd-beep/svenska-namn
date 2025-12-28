@@ -4,8 +4,9 @@ import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
-import { Search, TrendingUp, TrendingDown, Scale } from "lucide-react";
+import { Search, TrendingUp, TrendingDown, Scale, Mail } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 export default function BalancesPage() {
   const [search, setSearch] = useState("");
@@ -57,6 +58,24 @@ export default function BalancesPage() {
     (sum, b) => sum + (Number(b.balance) < 0 ? Math.abs(Number(b.balance)) : 0),
     0
   ) || 0;
+
+  const sendEmail = (customerId: number) => {
+    const customer = customers?.find(c => c.id === customerId);
+    const customerData = groupedByCustomer?.[customerId];
+    
+    if (!customer || !customerData) return;
+
+    const email = customer.email || "";
+    const subject = encodeURIComponent("Aktuellt saldo - BlomsterLån");
+    
+    let bodyText = `Hej ${customer.name},\n\nHär kommer ditt aktuella saldo för lånade artiklar:\n\n`;
+    customerData.items?.forEach(b => {
+      bodyText += `${b.itemName}: ${b.balance} st\n`;
+    });
+    bodyText += `\nVänliga hälsningar,\nBlomsterLån`;
+
+    window.location.href = `mailto:${email}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
+  };
 
   return (
     <Layout title="Saldon">
@@ -137,8 +156,16 @@ export default function BalancesPage() {
             {groupedByCustomer &&
               Object.entries(groupedByCustomer).map(([customerId, data]) => (
                 <Card key={customerId} data-testid={`balance-customer-${customerId}`}>
-                  <CardHeader className="pb-2">
+                  <CardHeader className="flex flex-row items-center justify-between py-4">
                     <CardTitle className="text-lg">{data.customerName}</CardTitle>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-2"
+                      onClick={() => sendEmail(parseInt(customerId))}
+                    >
+                      <Mail className="h-4 w-4" /> Skicka saldo
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
