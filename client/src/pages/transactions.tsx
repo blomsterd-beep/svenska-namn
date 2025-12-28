@@ -8,14 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
-import { Plus, TrendingUp, TrendingDown, Search } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { InsertTransaction } from "@shared/schema";
+
+interface TransactionItem {
+  itemId: string;
+  quantity: number;
+}
 
 export default function TransactionsPage() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<"delivery" | "return">("delivery");
+  const [itemsList, setItemsList] = useState<TransactionItem[]>([{ itemId: "", quantity: 0 }]);
   const queryClient = useQueryClient();
 
   const { data: transactions, isLoading } = useQuery({
@@ -34,12 +40,17 @@ export default function TransactionsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: api.transactions.create,
+    mutationFn: async (data: InsertTransaction[]) => {
+      for (const transaction of data) {
+        await api.transactions.create(transaction);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["balances"] });
       setDialogOpen(false);
-      toast.success(transactionType === "delivery" ? "Utleverans registrerad" : "Retur registrerad");
+      setItemsList([{ itemId: "", quantity: 0 }]);
+      toast.success(transactionType === "delivery" ? "Utleveranser registrerade" : "Returer registrerade");
     },
     onError: (error) => {
       toast.error("Fel", { description: error.message });
@@ -49,15 +60,46 @@ export default function TransactionsPage() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const data: InsertTransaction = {
-      customerId: parseInt(formData.get("customerId") as string),
-      itemId: parseInt(formData.get("itemId") as string),
-      quantity: parseInt(formData.get("quantity") as string),
-      type: transactionType,
-      note: formData.get("note") as string || null,
-    };
+    const customerId = parseInt(formData.get("customerId") as string);
+    const note = formData.get("note") as string || null;
 
-    createMutation.mutate(data);
+    const transactionsToCreate: InsertTransaction[] = itemsList
+      .filter(item => item.itemId && item.quantity > 0)
+      .map(item => ({
+        customerId,
+        itemId: parseInt(item.itemId),
+        quantity: item.quantity,
+        type: transactionType,
+        note,
+      }));
+
+    if (transactionsToCreate.length === 0) {
+      toast.error("Lägg till minst en artikel med antal > 0");
+      return;
+    }
+
+    createMutation.mutate(transactionsToCreate);
+  };
+
+  const addItemRow = () => {
+    setItemsList([...itemsList, { itemId: "", quantity: 0 }]);
+  };
+
+  const removeItemRow = (index: number) => {
+    if (itemsList.length > 1) {
+      const newList = [...itemsList];
+      newList.splice(index, 1);
+      setItemsList(newList);
+    }
+  };
+
+  const updateItemRow = (index: number, field: keyof TransactionItem, value: string) => {
+    const newList = [...itemsList];
+    newList[index] = { 
+      ...newList[index], 
+      [field]: field === "quantity" ? parseInt(value) || 0 : value 
+    };
+    setItemsList(newList);
   };
 
   const getCustomerName = (id: number) => customers?.find((c) => c.id === id)?.name || "Okänd";
@@ -82,13 +124,16 @@ export default function TransactionsPage() {
             data-testid="search-transactions"
           />
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setItemsList([{ itemId: "", quantity: 0 }]);
+        }}>
           <DialogTrigger asChild>
             <Button className="gap-2" data-testid="add-transaction-button">
               <Plus className="h-4 w-4" /> Ny transaktion
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Ny transaktion</DialogTitle>
             </DialogHeader>
@@ -132,34 +177,61 @@ export default function TransactionsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="itemId">Artikel *</Label>
-                <Select name="itemId" required>
-                  <SelectTrigger data-testid="select-item">
-                    <SelectValue placeholder="Välj artikel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {items?.map((item) => (
-                      <SelectItem key={item.id} value={item.id.toString()}>
-                        {item.name}
-                        {item.category && ` (${item.category})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+              <div className="space-y-3">
+                <Label>Artiklar</Label>
+                {itemsList.map((row, index) => (
+                  <div key={index} className="flex gap-2 items-start">
+                    <div className="flex-grow">
+                      <Select 
+                        value={row.itemId} 
+                        onValueChange={(val) => updateItemRow(index, "itemId", val)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Välj artikel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {items?.map((item) => (
+                            <SelectItem key={item.id} value={item.id.toString()}>
+                              {item.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-24">
+                      <Input
+                        type="number"
+                        min="0"
+                        value={row.quantity}
+                        onChange={(e) => updateItemRow(index, "quantity", e.target.value)}
+                        placeholder="Antal"
+                      />
+                    </div>
+                    {itemsList.length > 1 && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeItemRow(index)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={addItemRow}
+                  className="w-full gap-2 mt-2"
+                >
+                  <Plus className="h-3 w-3" /> Lägg till fler produkter
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="quantity">Antal *</Label>
-                <Input
-                  id="quantity"
-                  name="quantity"
-                  type="number"
-                  min="1"
-                  required
-                  defaultValue="1"
-                  data-testid="input-quantity"
-                />
-              </div>
+
               <div>
                 <Label htmlFor="note">Anteckning</Label>
                 <Input
@@ -175,7 +247,7 @@ export default function TransactionsPage() {
                 disabled={createMutation.isPending}
                 data-testid="submit-transaction"
               >
-                {transactionType === "delivery" ? "Registrera utleverans" : "Registrera retur"}
+                {transactionType === "delivery" ? "Registrera utleveranser" : "Registrera returer"}
               </Button>
             </form>
           </DialogContent>
